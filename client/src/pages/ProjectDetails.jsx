@@ -14,16 +14,20 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
 import KanbanBoard from "../components/KanbanBoard";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { useToast } from "../context/ToastContext";
 
 export default function ProjectDetails() {
   const { id } = useParams();
+  const { showToast } = useToast();
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -34,6 +38,7 @@ export default function ProjectDetails() {
 
   const [view, setView] = useState("list");
 
+  // Load project and its tasks
   const loadProjectData = useCallback(async () => {
     try {
       setLoading(true);
@@ -45,6 +50,7 @@ export default function ProjectDetails() {
       ]);
 
       const projects = projectsResponse.data.projects || [];
+
       const selectedProject = projects.find(
         (item) => item._id === id
       );
@@ -52,7 +58,9 @@ export default function ProjectDetails() {
       if (!selectedProject) {
         setProject(null);
         setTasks([]);
-        setError("Project not found or you do not have access to it.");
+        setError(
+          "Project not found or you do not have access to it."
+        );
         return;
       }
 
@@ -72,6 +80,7 @@ export default function ProjectDetails() {
     loadProjectData();
   }, [loadProjectData]);
 
+  // Filter tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const matchesSearch = task.title
@@ -79,47 +88,80 @@ export default function ProjectDetails() {
         .includes(search.trim().toLowerCase());
 
       const matchesStatus =
-        statusFilter === "all" || task.status === statusFilter;
+        statusFilter === "all" ||
+        task.status === statusFilter;
 
       const matchesPriority =
-        priorityFilter === "all" || task.priority === priorityFilter;
+        priorityFilter === "all" ||
+        task.priority === priorityFilter;
 
-      return matchesSearch && matchesStatus && matchesPriority;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesPriority
+      );
     });
   }, [tasks, search, statusFilter, priorityFilter]);
 
+  // Open create modal
   const openCreateModal = () => {
     setEditingTask(null);
     setModalOpen(true);
   };
 
+  // Open edit modal
   const openEditModal = (task) => {
     setEditingTask(task);
     setModalOpen(true);
   };
 
+  // Create or update task
   const handleSaveTask = async (formData) => {
     try {
       setSaving(true);
-      setNotice("");
       setError("");
 
       if (editingTask) {
-        await api.put(`/tasks/${editingTask._id}`, formData);
-        setNotice("Task updated successfully.");
+        await api.put(
+          `/tasks/${editingTask._id}`,
+          formData
+        );
+
+        showToast(
+          "Task updated successfully.",
+          "success"
+        );
       } else {
-        await api.post(`/projects/${id}/tasks`, formData);
-        setNotice("Task created successfully.");
+        await api.post(
+          `/projects/${id}/tasks`,
+          formData
+        );
+
+        showToast(
+          "Task created successfully.",
+          "success"
+        );
       }
 
       setModalOpen(false);
       setEditingTask(null);
+
       await loadProjectData();
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        "Unable to save task.";
+
+      showToast(message, "error");
+
+      // Allows TaskModal to display the error too
+      throw err;
     } finally {
       setSaving(false);
     }
   };
 
+  // Delete task
   const handleDeleteTask = async (task) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${task.title}"?`
@@ -128,57 +170,83 @@ export default function ProjectDetails() {
     if (!confirmed) return;
 
     try {
-      setNotice("");
       setError("");
 
       await api.delete(`/tasks/${task._id}`);
 
       setTasks((current) =>
-        current.filter((item) => item._id !== task._id)
+        current.filter(
+          (item) => item._id !== task._id
+        )
       );
 
-      setNotice("Task deleted successfully.");
+      showToast(
+        "Task deleted successfully.",
+        "success"
+      );
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Unable to delete this task."
+      showToast(
+        err.response?.data?.message ||
+          "Unable to delete this task.",
+        "error"
       );
     }
   };
 
+  // Update task status
   const handleStatusChange = async (taskId, status) => {
     try {
       setError("");
-      setNotice("");
 
-      await api.patch(`/tasks/${taskId}/status`, { status });
+      await api.patch(
+        `/tasks/${taskId}/status`,
+        { status }
+      );
 
       setTasks((current) =>
         current.map((task) =>
-          task._id === taskId ? { ...task, status } : task
+          task._id === taskId
+            ? { ...task, status }
+            : task
         )
       );
+
+      showToast(
+        "Task status updated.",
+        "success"
+      );
     } catch (err) {
-      setError(
+      showToast(
         err.response?.data?.message ||
-          "Unable to update task status."
+          "Unable to update task status.",
+        "error"
       );
     }
   };
 
+  // Task statistics
   const statusCounts = {
-    todo: tasks.filter((task) => task.status === "todo").length,
+    todo: tasks.filter(
+      (task) => task.status === "todo"
+    ).length,
+
     inProgress: tasks.filter(
       (task) => task.status === "in-progress"
     ).length,
-    done: tasks.filter((task) => task.status === "done").length,
+
+    done: tasks.filter(
+      (task) => task.status === "done"
+    ).length,
   };
 
+  // Loading state
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <p className="text-sm text-slate-500">Loading project...</p>
-        </div>
+        <LoadingSpinner
+          label="Loading project..."
+          fullScreen
+        />
       </DashboardLayout>
     );
   }
@@ -186,6 +254,8 @@ export default function ProjectDetails() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-7xl space-y-7">
+
+        {/* Back navigation */}
         <Link
           to="/projects"
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600"
@@ -194,9 +264,14 @@ export default function ProjectDetails() {
           Back to projects
         </Link>
 
+        {/* Error message */}
         {error && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div
+            role="alert"
+            className="flex items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
             <span>{error}</span>
+
             <button
               type="button"
               onClick={loadProjectData}
@@ -209,6 +284,7 @@ export default function ProjectDetails() {
 
         {project && (
           <>
+            {/* Project header */}
             <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
               <div>
                 <p className="text-sm font-medium text-indigo-600">
@@ -235,23 +311,30 @@ export default function ProjectDetails() {
               </button>
             </section>
 
-            {notice && (
-              <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {notice}
-              </p>
-            )}
-
+            {/* Task statistics */}
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
-                { label: "To do", count: statusCounts.todo },
-                { label: "In progress", count: statusCounts.inProgress },
-                { label: "Completed", count: statusCounts.done },
+                {
+                  label: "To do",
+                  count: statusCounts.todo,
+                },
+                {
+                  label: "In progress",
+                  count: statusCounts.inProgress,
+                },
+                {
+                  label: "Completed",
+                  count: statusCounts.done,
+                },
               ].map((item) => (
                 <div
                   key={item.label}
                   className="rounded-2xl border border-slate-200 bg-white p-5"
                 >
-                  <p className="text-sm text-slate-500">{item.label}</p>
+                  <p className="text-sm text-slate-500">
+                    {item.label}
+                  </p>
+
                   <p className="mt-2 text-2xl font-bold text-slate-900">
                     {item.count}
                   </p>
@@ -259,8 +342,10 @@ export default function ProjectDetails() {
               ))}
             </section>
 
+            {/* Tasks section */}
             <section className="space-y-5">
-              {/* Tasks heading and view switcher */}
+
+              {/* Heading and view switcher */}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">
@@ -320,15 +405,21 @@ export default function ProjectDetails() {
 
                   <input
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) =>
+                      setSearch(event.target.value)
+                    }
                     placeholder="Search tasks..."
+                    aria-label="Search tasks"
                     className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
 
                 <select
+                  aria-label="Filter by status"
                   value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value)
+                  }
                   className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-indigo-500"
                 >
                   <option value="all">All statuses</option>
@@ -338,8 +429,11 @@ export default function ProjectDetails() {
                 </select>
 
                 <select
+                  aria-label="Filter by priority"
                   value={priorityFilter}
-                  onChange={(event) => setPriorityFilter(event.target.value)}
+                  onChange={(event) =>
+                    setPriorityFilter(event.target.value)
+                  }
                   className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-indigo-500"
                 >
                   <option value="all">All priorities</option>
@@ -349,7 +443,7 @@ export default function ProjectDetails() {
                 </select>
               </div>
 
-              {/* Empty states and task views */}
+              {/* Empty state */}
               {tasks.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
                   <ListTodo
@@ -384,6 +478,7 @@ export default function ProjectDetails() {
                   </p>
                 </div>
               ) : view === "kanban" ? (
+                /* Kanban view */
                 <KanbanBoard
                   tasks={filteredTasks}
                   onEdit={openEditModal}
@@ -391,6 +486,7 @@ export default function ProjectDetails() {
                   onStatusChange={handleStatusChange}
                 />
               ) : (
+                /* List view */
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                   {filteredTasks.map((task) => (
                     <TaskCard
@@ -408,6 +504,7 @@ export default function ProjectDetails() {
         )}
       </div>
 
+      {/* Create/Edit Task Modal */}
       <TaskModal
         isOpen={modalOpen}
         onClose={() => {
