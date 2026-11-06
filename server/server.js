@@ -9,6 +9,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 
 import {
   notFound,
@@ -64,6 +65,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api", taskRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Error handling
 app.use(notFound);
