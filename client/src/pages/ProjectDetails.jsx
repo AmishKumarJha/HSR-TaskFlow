@@ -13,6 +13,7 @@ import api from "../services/api";
 import DashboardLayout from "../layouts/DashboardLayout";
 import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
+import KanbanBoard from "../components/KanbanBoard";
 
 export default function ProjectDetails() {
   const { id } = useParams();
@@ -30,6 +31,8 @@ export default function ProjectDetails() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+
+  const [view, setView] = useState("list");
 
   const loadProjectData = useCallback(async () => {
     try {
@@ -99,6 +102,7 @@ export default function ProjectDetails() {
     try {
       setSaving(true);
       setNotice("");
+      setError("");
 
       if (editingTask) {
         await api.put(`/tasks/${editingTask._id}`, formData);
@@ -125,10 +129,14 @@ export default function ProjectDetails() {
 
     try {
       setNotice("");
+      setError("");
+
       await api.delete(`/tasks/${task._id}`);
+
       setTasks((current) =>
         current.filter((item) => item._id !== task._id)
       );
+
       setNotice("Task deleted successfully.");
     } catch (err) {
       setError(
@@ -206,11 +214,14 @@ export default function ProjectDetails() {
                 <p className="text-sm font-medium text-indigo-600">
                   Project workspace
                 </p>
+
                 <h1 className="mt-2 break-words text-3xl font-bold tracking-tight text-slate-900">
                   {project.title}
                 </h1>
+
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                  {project.description || "Manage and track your project tasks."}
+                  {project.description ||
+                    "Manage and track your project tasks."}
                 </p>
               </div>
 
@@ -249,32 +260,64 @@ export default function ProjectDetails() {
             </section>
 
             <section className="space-y-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              {/* Tasks heading and view switcher */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">
                     Tasks
                   </h2>
+
                   <p className="mt-1 text-sm text-slate-500">
                     {filteredTasks.length} of {tasks.length} tasks
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={loadProjectData}
-                  className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  <RefreshCw size={15} />
-                  Refresh
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => setView("list")}
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                        view === "list"
+                          ? "bg-indigo-600 text-white"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      List
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setView("kanban")}
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                        view === "kanban"
+                          ? "bg-indigo-600 text-white"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      Kanban
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={loadProjectData}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    <RefreshCw size={15} />
+                    Refresh
+                  </button>
+                </div>
               </div>
 
+              {/* Search and filters */}
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="relative md:col-span-1">
                   <Search
                     size={17}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                   />
+
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
@@ -306,18 +349,22 @@ export default function ProjectDetails() {
                 </select>
               </div>
 
+              {/* Empty states and task views */}
               {tasks.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
                   <ListTodo
                     size={34}
                     className="mx-auto text-slate-400"
                   />
+
                   <h3 className="mt-4 font-semibold text-slate-900">
                     No tasks yet
                   </h3>
+
                   <p className="mt-2 text-sm text-slate-500">
                     Create your first task to start tracking this project.
                   </p>
+
                   <button
                     type="button"
                     onClick={openCreateModal}
@@ -331,10 +378,18 @@ export default function ProjectDetails() {
                   <p className="font-semibold text-slate-800">
                     No matching tasks
                   </p>
+
                   <p className="mt-2 text-sm text-slate-500">
                     Try changing your search or filters.
                   </p>
                 </div>
+              ) : view === "kanban" ? (
+                <KanbanBoard
+                  tasks={filteredTasks}
+                  onEdit={openEditModal}
+                  onDelete={handleDeleteTask}
+                  onStatusChange={handleStatusChange}
+                />
               ) : (
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                   {filteredTasks.map((task) => (
