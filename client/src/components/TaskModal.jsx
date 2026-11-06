@@ -23,6 +23,7 @@ export default function TaskModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(
       task
         ? {

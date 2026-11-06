@@ -18,6 +18,7 @@ export default function ProjectModal({
 
   useEffect(() => {
     if (isOpen) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         title: project?.title || "",
         description: project?.description || "",

@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  FolderKanban,
   Plus,
   Search,
   RefreshCw,
@@ -24,6 +23,7 @@ export default function Projects() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
 
+  // Fetch projects
   const fetchProjects = async () => {
     try {
       setLoading(true);
@@ -35,7 +35,7 @@ export default function Projects() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        "Unable to load projects. Please try again."
+          "Unable to load projects. Please try again."
       );
     } finally {
       setLoading(false);
@@ -43,21 +43,27 @@ export default function Projects() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProjects();
   }, []);
 
+  // Open create modal
   const openCreateModal = () => {
     setSelectedProject(null);
     setModalOpen(true);
     setSuccess("");
+    setError("");
   };
 
+  // Open edit modal
   const openEditModal = (project) => {
     setSelectedProject(project);
     setModalOpen(true);
     setSuccess("");
+    setError("");
   };
 
+  // Create or update project
   const handleSaveProject = async (formData) => {
     try {
       setSaving(true);
@@ -85,10 +91,16 @@ export default function Projects() {
 
         setSuccess("Project updated successfully.");
       } else {
-        const { data } = await api.post("/projects", formData);
+        const { data } = await api.post(
+          "/projects",
+          formData
+        );
 
         if (data.project) {
-          setProjects((prev) => [data.project, ...prev]);
+          setProjects((prev) => [
+            data.project,
+            ...prev,
+          ]);
         } else {
           await fetchProjects();
         }
@@ -98,13 +110,12 @@ export default function Projects() {
 
       setModalOpen(false);
       setSelectedProject(null);
-    } catch (err) {
-      throw err;
     } finally {
       setSaving(false);
     }
   };
 
+  // Delete project
   const handleDeleteProject = async (project) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${project.title}"? All tasks inside this project will also be deleted.`
@@ -126,11 +137,12 @@ export default function Projects() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        "Unable to delete project. Please try again."
+          "Unable to delete project. Please try again."
       );
     }
   };
 
+  // Search projects
   const filteredProjects = projects.filter((project) =>
     `${project.title} ${project.description || ""}`
       .toLowerCase()
@@ -158,6 +170,7 @@ export default function Projects() {
           </div>
 
           <button
+            type="button"
             onClick={openCreateModal}
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
           >
@@ -182,7 +195,9 @@ export default function Projects() {
             className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
             <span>{error}</span>
+
             <button
+              type="button"
               onClick={fetchProjects}
               className="font-semibold underline"
             >
@@ -204,16 +219,19 @@ export default function Projects() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search projects..."
+              aria-label="Search projects"
               className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-slate-500">
-              {projects.length} {projects.length === 1 ? "project" : "projects"}
+              {projects.length}{" "}
+              {projects.length === 1 ? "project" : "projects"}
             </p>
 
             <button
+              type="button"
               onClick={fetchProjects}
               disabled={loading}
               aria-label="Refresh projects"
@@ -227,13 +245,14 @@ export default function Projects() {
           </div>
         </div>
 
-        {/* Loading */}
+        {/* Loading and project list */}
         {loading ? (
           <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center">
             <RefreshCw
               size={28}
               className="mx-auto animate-spin text-indigo-600"
             />
+
             <p className="mt-3 text-sm text-slate-500">
               Loading projects...
             </p>
@@ -271,6 +290,7 @@ export default function Projects() {
 
             {!search && (
               <button
+                type="button"
                 onClick={openCreateModal}
                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
               >
@@ -282,6 +302,7 @@ export default function Projects() {
         )}
       </div>
 
+      {/* Project modal */}
       <ProjectModal
         isOpen={modalOpen}
         onClose={() => {

@@ -12,37 +12,23 @@ import {
 
 import { useAuth } from "../context/AuthContext";
 
-export default function DashboardLayout({ children }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+// Navigation items
+const navItems = [
+  {
+    name: "Dashboard",
+    path: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    name: "Projects",
+    path: "/projects",
+    icon: FolderKanban,
+  },
+];
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-    setMobileMenuOpen(false);
-    navigate("/login", { replace: true });
-  };
-
-  const closeMobileMenu = () => {
-    setMobileMenuOpen(false);
-  };
-
-  const navItems = [
-    {
-      name: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      name: "Projects",
-      path: "/projects",
-      icon: FolderKanban,
-    },
-  ];
-
-  // Shared sidebar content
-  const SidebarContent = ({ mobile = false }) => (
+// Sidebar content declared outside DashboardLayout
+function SidebarContent({ user, onLogout, onNavigate, mobile = false }) {
+  return (
     <>
       {/* Logo */}
       <div className="flex h-[100px] shrink-0 items-center justify-between gap-3 border-b border-white/10 px-6">
@@ -59,7 +45,7 @@ export default function DashboardLayout({ children }) {
         {mobile && (
           <button
             type="button"
-            onClick={closeMobileMenu}
+            onClick={onNavigate}
             aria-label="Close navigation menu"
             className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
           >
@@ -81,7 +67,7 @@ export default function DashboardLayout({ children }) {
             <NavLink
               key={item.path}
               to={item.path}
-              onClick={mobile ? closeMobileMenu : undefined}
+              onClick={mobile ? onNavigate : undefined}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
                   isActive
@@ -117,7 +103,7 @@ export default function DashboardLayout({ children }) {
 
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={onLogout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 transition hover:bg-red-500/10 hover:text-red-400"
         >
           <LogOut size={18} />
@@ -126,13 +112,33 @@ export default function DashboardLayout({ children }) {
       </div>
     </>
   );
+}
+
+export default function DashboardLayout({ children }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    setMobileMenuOpen(false);
+    navigate("/login", { replace: true });
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
 
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-slate-950 text-white md:flex">
-        <SidebarContent />
+        <SidebarContent
+          user={user}
+          onLogout={handleLogout}
+        />
       </aside>
 
       {/* Mobile overlay */}
@@ -154,7 +160,12 @@ export default function DashboardLayout({ children }) {
         }`}
         aria-hidden={!mobileMenuOpen}
       >
-        <SidebarContent mobile />
+        <SidebarContent
+          user={user}
+          onLogout={handleLogout}
+          onNavigate={closeMobileMenu}
+          mobile
+        />
       </aside>
 
       {/* Main content */}

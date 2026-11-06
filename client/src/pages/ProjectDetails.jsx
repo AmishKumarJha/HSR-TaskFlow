@@ -77,6 +77,7 @@ export default function ProjectDetails() {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadProjectData();
   }, [loadProjectData]);
 
