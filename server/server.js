@@ -7,6 +7,7 @@ import rateLimit from "express-rate-limit";
 
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
 
 import {
   notFound,
@@ -60,6 +61,7 @@ app.get("/", (req, res) => {
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
+app.use("/api/projects", projectRoutes);
 
 // Error handling
 app.use(notFound);
